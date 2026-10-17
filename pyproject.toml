@@ -1,0 +1,33 @@
+[project]
+name = "healthtrack"
+version = "1.0.0"
+description = "HealthTrack - Smart Water Tracker & Photo Medicine Reminder"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "flet>=0.21.0",
+    "Pillow>=9.0.0"
+]
+
+[tool.flet]
+org = "com.healthtrack"
+product = "HealthTrack"
+description = "Smart Water Tracker & Photo Medicine Reminder App"
+assets_dir = "assets"
+
+[tool.flet.android]
+package = "com.healthtrack.water"
+adaptive_icon_background = "#14508C"
+
+[tool.flet.android.permission]
+"android.permission.INTERNET" = true
+"android.permission.CAMERA" = true
+"android.permission.READ_EXTERNAL_STORAGE" = true
+"android.permission.READ_MEDIA_IMAGES" = true
+"android.permission.VIBRATE" = true
+"android.permission.POST_NOTIFICATIONS" = true
+"android.permission.WAKE_LOCK" = true
+"android.permission.SCHEDULE_EXACT_ALARM" = true
+"android.permission.USE_EXACT_ALARM" = true
+"android.permission.RECEIVE_BOOT_COMPLETED" = true
+"android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" = true

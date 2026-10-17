@@ -1,0 +1,106 @@
+name: Build Android APK & AAB (Google Play Store)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Reconstruct Directory Structure
+        run: |
+          echo "=== 1. Checking and restoring file locations ==="
+          mkdir -p assets src/assets
+          
+          if [ -f "icon.png" ]; then
+            cp -f icon.png assets/icon.png
+            cp -f icon.png src/assets/icon.png
+          elif [ -f "assets/icon.png" ]; then
+            cp -f assets/icon.png icon.png
+            cp -f assets/icon.png src/assets/icon.png
+          fi
+
+          mkdir -p android_res/values android_res/drawable android_res/mipmap-anydpi-v26
+          mkdir -p android_res/mipmap-mdpi android_res/mipmap-hdpi android_res/mipmap-xhdpi android_res/mipmap-xxhdpi android_res/mipmap-xxxhdpi
+
+          [ -f "colors.xml" ] && cp -f colors.xml android_res/values/colors.xml || true
+          [ -f "ic_launcher_background.xml" ] && cp -f ic_launcher_background.xml android_res/drawable/ic_launcher_background.xml || true
+          [ -f "ic_launcher.xml" ] && cp -f ic_launcher.xml android_res/mipmap-anydpi-v26/ic_launcher.xml || true
+          [ -f "ic_launcher_round.xml" ] && cp -f ic_launcher_round.xml android_res/mipmap-anydpi-v26/ic_launcher_round.xml || true
+
+          for m in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            [ -f "ic_launcher.png" ] && cp -f ic_launcher.png "android_res/mipmap-$m/ic_launcher.png" || true
+            [ -f "ic_launcher_round.png" ] && cp -f ic_launcher_round.png "android_res/mipmap-$m/ic_launcher_round.png" || true
+            [ -f "ic_launcher_foreground.png" ] && cp -f ic_launcher_foreground.png "android_res/mipmap-$m/ic_launcher_foreground.png" || true
+          done
+
+          echo "Assets verified:"
+          ls -la assets/
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Set up Android SDK & Accept Licenses
+        run: |
+          echo "Accepting Android SDK licenses..."
+          yes | "$ANDROID_HOME"/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "flet[all]"
+          pip install -r requirements.txt
+
+      - name: Build Android APK with Custom Logo
+        run: |
+          echo "=== Starting Flet Android APK Build with Custom Icon ==="
+          yes | flet build apk --yes -v
+
+      - name: Build Android App Bundle (AAB for Google Play Store)
+        run: |
+          echo "=== Starting Flet Android AAB Build with Custom Icon ==="
+          yes | flet build aab --yes -v || true
+
+      - name: Collect Final Artifacts
+        run: |
+          echo "=== Collecting Final APK and AAB Artifacts ==="
+          mkdir -p final_artifacts/apk final_artifacts/aab
+
+          # Copy all generated APKs directly
+          find . -name "*.apk" -not -path "*/final_artifacts/*" -exec cp -fv {} final_artifacts/apk/ \; || true
+
+          # Copy all generated AABs directly
+          find . -name "*.aab" -not -path "*/final_artifacts/*" -exec cp -fv {} final_artifacts/aab/ \; || true
+
+          echo "=== Final APKs in final_artifacts/apk/ ==="
+          ls -lh final_artifacts/apk/ || true
+          echo "=== Final AABs in final_artifacts/aab/ ==="
+          ls -lh final_artifacts/aab/ || true
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HealthTrack-APK
+          path: final_artifacts/apk/*
+          if-no-files-found: warn
+
+      - name: Upload AAB (Google Play Store) Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HealthTrack-PlayStore-AAB
+          path: final_artifacts/aab/*
+          if-no-files-found: warn
